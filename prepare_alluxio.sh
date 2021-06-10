@@ -1,3 +1,32 @@
+function doas() {
+  if [[ "$#" -ne "2" ]]; then
+    echo "Incorrect number of arguments passed into function doas, expecting 2"
+    exit 2
+  fi
+  local user="$1"
+  local cmd="$2"
+
+  sudo runuser -l "${user}" -c "${cmd}"
+}
+
+function set_alluxio_property() {
+  ALLUXIO_SITE_PROPERTIES=/opt/alluxio/conf/alluxio-site.properties
+
+  if [[ "$#" -ne "2" ]]; then
+    echo "Incorrect number of arguments passed into function set_alluxio_property, expecting 2"
+    exit 2
+  fi
+  local property="$1"
+  local value="$2"
+
+  if grep -qe "^\s*${property}=" ${ALLUXIO_SITE_PROPERTIES} 2> /dev/null; then
+    doas alluxio "sed -i 's;${property}=.*;${property}=${value};g' ${ALLUXIO_SITE_PROPERTIES}"
+    # echo "Property ${property} already exists in ${ALLUXIO_SITE_PROPERTIES} and is replaced with value ${value}" >&2
+  else
+    doas alluxio "echo '${property}=${value}' >> ${ALLUXIO_SITE_PROPERTIES}"
+  fi
+}
+
 function download_tpcds_queries() {
     mkdir -p queries
     aws s3 cp --recursive s3://alluxio.saiguang.test/tpcds/queries-tpcds_2_4_presto/ queries
@@ -82,11 +111,76 @@ function show_add_policy() {
     "
 }
 
+function use_max_free_allocator() {
+    echo "Update config."
+    set_alluxio_property alluxio.worker.allocator.class alluxio.worker.block.allocator.MaxFreeAllocator
+
+    echo "Restart worker"
+    doas alluxio "alluxio-start.sh worker"
+
+    echo "Write new files and check new files added to /mnt/alluxio/alluxioworker"
+}
+
+function use_greedy_allocator() {
+    echo "Update config."
+    set_alluxio_property alluxio.worker.allocator.class alluxio.worker.block.allocator.GreedyAllocator
+
+    echo "Restart worker"
+    doas alluxio "alluxio-start.sh worker"
+
+    echo "Write new files and check new files added to /mnt/ramdisk/alluxioworker"
+}
+
+function set_policy_scan_interval() {
+    if [ $# -ne 1 ]; then
+        echo "Please add the argument for interval value."
+        return 1
+    fi
+
+    echo "Update config."
+    set_alluxio_property alluxio.policy.scan.interval "$1"
+
+    echo "Restart master"
+    doas alluxio "alluxio-start.sh master"
+
+    echo "alluxio.policy.scan.interval=$(alluxio getConf alluxio.policy.scan.interval)"
+}
+
+function stop_hdfs_namednoe() {
+    sudo initctl stop hadoop-hdfs-namenode
+}
+
+function start_hdfs_namednoe() {
+    sudo initctl start hadoop-hdfs-namenode
+}
+
 function prepare_usage() {
-    echo "download_tpcds_queries"
-    echo "enable_transparent_uri"
-    echo "disable_transparent_uri"
-    echo "show_mount_s3"
-    echo "show_mount_union"
-    echo "run_presto_query"
+    echo -e "\n"
+
+    echo -e "[Cache Acceleration Demo]"
+    echo -e "    download_tpcds_queries"
+    echo -e "    run_presto_query"
+    echo -e "\n"
+
+    echo -e "[PDDM Demo]"
+    echo -e "    show_mount_union"
+    echo -e "    show_add_policy"
+    echo -e "    set_policy_scan_interval"
+    echo -e "    start_hdfs_namednoe"
+    echo -e "    stop_hdfs_namenode"
+    echo -e "\n"
+
+    echo -e "[Transparent URI Demo]"
+    echo -e "    enable_transparent_uri"
+    echo -e "    disable_transparent_uri"
+    echo -e "\n"
+
+    echo -e "[Unified Namespace Demo]"
+    echo -e "    show_mount_s3"
+    echo -e "\n"
+
+    echo -e "[Tiered Storage Demo]"
+    echo -e "    use_max_free_allocator"
+    echo -e "    use_max_free_allocator"
+    echo -e "\n"
 }
