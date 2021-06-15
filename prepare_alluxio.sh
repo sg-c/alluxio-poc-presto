@@ -32,7 +32,7 @@ function download_tpcds_queries() {
     aws s3 cp --recursive s3://alluxio.saiguang.test/tpcds/queries-tpcds_2_4_presto/ queries
 }
 
-function enable_transparent_uri() {
+function enable_transparent_uri_for_presto() {
     local core_site=/etc/presto/conf/alluxioConf/core-site.xml
     local core_site_allx=$core_site.alluxio
 
@@ -49,7 +49,7 @@ function enable_transparent_uri() {
     fi
 }
 
-function disable_transparent_uri() {
+function disable_transparent_uri_for_presto() {
     local core_site=/etc/presto/conf/alluxioConf/core-site.xml
     local core_site_allx=$core_site.alluxio
     local core_site_hdfs=$core_site.hdfs
@@ -69,8 +69,22 @@ function disable_transparent_uri() {
     fi
 }
 
+function enable_transparent_uri_for_s3() {
+    local core_site=/etc/hadoop/conf/core-site.xml
+
+    sed -i "s/org.apache.hadoop.fs.s3.EMRFSDelegate/alluxio.hadoop.AlluxioShimFileSystem/" $core_site
+    sed -i "s/com.amazon.ws.emr.hadoop.fs.EmrFileSystem/alluxio.hadoop.ShimFileSystem/" $core_site
+}
+
+function disable_transparent_uri_for_s3() {
+    local core_site=/etc/hadoop/conf/core-site.xml
+
+    sed -i "s/alluxio.hadoop.AlluxioShimFileSystem/org.apache.hadoop.fs.s3.EMRFSDelegate/" $core_site
+    sed -i "s/alluxio.hadoop.ShimFileSystem/com.amazon.ws.emr.hadoop.fs.EmrFileSystem/" $core_site
+}
+
 function show_mount_s3() {
-    echo "alluxio fs mount /s3-tpcds s3://autobots-tpcds-pregenerated-data/spark/unpart_sf100_10k/"
+    echo "alluxio fs mount /s3-tpcds s3://alluxio.saiguang.test/tpcds/parquet/scale100/"
 }
 
 function show_mount_union() {
@@ -101,6 +115,14 @@ function run_presto_query() {
     fi
 
     presto-cli --catalog onprem --schema default < $1
+}
+
+function show_spark_command_alluxio() {
+    echo "spark.read.parquet(\"alluxio://$(alluxio getConf alluxio.master.hostname):19998/s3-tpcds/customer/\").count"
+}
+
+function show_spark_command_s3() {
+    echo "spark.read.parquet(\"s3://alluxio.saiguang.test/tpcds/parquet/scale100/customer/\").count"
 }
 
 function show_add_policy() {
@@ -160,6 +182,7 @@ function prepare_usage() {
     echo -e "[Cache Acceleration Demo]"
     echo -e "    download_tpcds_queries"
     echo -e "    run_presto_query"
+    echo -e "    show_spark_command"
     echo -e "\n"
 
     echo -e "[PDDM Demo]"
@@ -171,8 +194,10 @@ function prepare_usage() {
     echo -e "\n"
 
     echo -e "[Transparent URI Demo]"
-    echo -e "    enable_transparent_uri"
-    echo -e "    disable_transparent_uri"
+    echo -e "    enable_transparent_uri_for_presto"
+    echo -e "    disable_transparent_uri_for_presto"
+    echo -e "    enable_transparent_uri_for_s3"
+    echo -e "    disable_transparent_uri_for_s3"
     echo -e "\n"
 
     echo -e "[Unified Namespace Demo]"
