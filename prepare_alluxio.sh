@@ -153,6 +153,16 @@ function use_greedy_allocator() {
     echo "Write new files and check new files added to /mnt/ramdisk/alluxioworker"
 }
 
+function use_round_robin_allocator() {
+    echo "Update config."
+    set_alluxio_property alluxio.worker.allocator.class alluxio.worker.block.allocator.RoundRobinAllocator
+
+    echo "Restart worker"
+    doas alluxio "alluxio-start.sh worker"
+
+    echo "Write new files and check new files added to both /mnt/ramdisk/alluxioworker and /mnt/alluxio/alluxioworker"
+}
+
 function set_policy_scan_interval() {
     if [ $# -ne 1 ]; then
         echo "Please add the argument for interval value."
@@ -174,6 +184,47 @@ function stop_hdfs_namednoe() {
 
 function start_hdfs_namednoe() {
     sudo initctl start hadoop-hdfs-namenode
+}
+
+function prepare_sds_table() {
+    hive -e "
+    CREATE TABLE IF NOT EXISTS default.students
+    (name String, age int)
+    ROW FORMAT DELIMITED
+    FIELDS TERMINATED BY ','
+    LINES TERMINATED BY '\n'
+    STORED AS TEXTFILE;
+    "
+
+    hive -e "
+    INSERT OVERWRITE TABLE default.students VALUES 
+    ('fred flintstone', 35), ('barney rubble', 32);
+    "
+}
+
+function show_sds_commands() {
+    echo "
+    alluxio table attachdb --db hive_compute hive thrift://$(alluxio getConf alluxio.master.hostname):9083 default  # attach db to alluxio"
+
+    echo "
+    alluxio table detachdb hive_compute  # detach db from alluxio"
+
+    echo "
+    alluxio table ls  # list attached db"
+
+    echo "
+    presto-cli --execute \"show catalogs\"  # show catalogs"
+
+    echo "
+    presto-cli --execute \"show schemas in catalog_alluxio\"  # show schemas"
+
+    echo "
+    presto-cli --execute \"show tables in catalog_alluxio.hive_compute\"  # show tables"
+
+    echo "
+    presto-cli --execute \"select * from catalog_alluxio.hive_compute.students\" # run query"
+
+    echo -e "\n"
 }
 
 function prepare_usage() {
@@ -206,6 +257,12 @@ function prepare_usage() {
 
     echo -e "[Tiered Storage Demo]"
     echo -e "    use_max_free_allocator"
-    echo -e "    use_max_free_allocator"
+    echo -e "    use_greedy_allocator"
+    echo -e "    use_round_robin_allocator"
+    echo -e "\n"
+
+    echo -e "[Catalog Service]"
+    echo -e "    prepare_sds_table"
+    echo -e "    show_sds_commands"
     echo -e "\n"
 }
