@@ -227,6 +227,53 @@ function show_sds_commands() {
     echo -e "\n"
 }
 
+function enable_auditing() {
+    echo "Update config."
+    set_alluxio_property alluxio.master.audit.logging.enabled "true"
+
+    echo "Restart master."
+    alluxio-start.sh master
+}
+
+function disable_auditing() {
+    echo "Update config."
+    set_alluxio_property alluxio.master.audit.logging.enabled "false"
+
+    echo "Restart master."
+    alluxio-start.sh master
+}
+
+function set_ttl_checker_interval() {
+    echo "Update config."
+    set_alluxio_property alluxio.master.ttl.checker.interval "$1"
+    
+    echo "Restart master."
+    alluxio-start.sh master
+
+    echo "alluxio.master.ttl.checker.interval=$(alluxio getConf alluxio.master.ttl.checker.interval)"
+}
+
+function show_set_ttl() {
+    echo "alluxio fs load /tmp/foo; alluxio fs setTtl --action free /tmp/foo 1s;"
+}
+
+function show_path_conf_metadata_sync() {
+    echo "alluxio fsadmin pathConf add --property alluxio.user.file.metadata.sync.interval=20s ALLU_PATH"
+}
+
+function mount_fuse() {
+    echo "user_allow_other" | sudo tee /etc/fuse.conf  # config for FUSE
+
+    sudo mkdir -p /mnt/alluxio-fuse
+    sudo chmod 777 /mnt/alluxio-fuse
+
+    doas alluxio "/opt/alluxio/integration/fuse/bin/alluxio-fuse mount -o allow_other /mnt/alluxio-fuse /"
+}
+
+function umount_fuse() {
+    doas alluxio "/opt/alluxio/integration/fuse/bin/alluxio-fuse umount /mnt/alluxio-fuse"
+}
+
 function prepare_usage() {
     echo -e "\n"
 
@@ -264,5 +311,18 @@ function prepare_usage() {
     echo -e "[Catalog Service]"
     echo -e "    prepare_sds_table"
     echo -e "    show_sds_commands"
+    echo -e "\n"
+
+    echo -e "[Others]"
+    echo -e "    enable_auditing"
+    echo -e "    disable_auditing"
+    echo -e " "
+    echo -e "    set_ttl_checker_interval"
+    echo -e "    show_set_ttl"
+    echo -e " "
+    echo -e "    show_path_conf_metadata_sync"
+    echo -e " "
+    echo -e "    mount_fuse"
+    echo -e "    umount_fuse"
     echo -e "\n"
 }
