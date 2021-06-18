@@ -188,18 +188,25 @@ function start_hdfs_namednoe() {
 
 function prepare_sds_table() {
     hive -e "
-    CREATE TABLE IF NOT EXISTS default.students
-    (name String, age int)
-    ROW FORMAT DELIMITED
-    FIELDS TERMINATED BY ','
-    LINES TERMINATED BY '\n'
-    STORED AS TEXTFILE;
+        CREATE TABLE IF NOT EXISTS default.geo (
+            truckid  string,
+            driverid string,
+            event    string,
+            latitude    double,
+            longtitude  double,
+            city    string,
+            state   string,
+            velocity    int,
+            event_idx   int,
+            idling_idx  int
+        )
+        ROW FORMAT DELIMITED
+        FIELDS TERMINATED BY ','
+        LINES TERMINATED BY '\n'
+        LOCATION 'hdfs:///geolocation';
     "
 
-    hive -e "
-    INSERT OVERWRITE TABLE default.students VALUES 
-    ('fred flintstone', 35), ('barney rubble', 32);
-    "
+    s3-dist-cp --src s3://alluxio.saiguang.test/geo-data/ --dest /geolocation
 }
 
 function show_sds_commands() {
@@ -213,6 +220,12 @@ function show_sds_commands() {
     alluxio table ls  # list attached db"
 
     echo "
+    alluxio table transform hive_compute geo  # start transform"
+
+    echo "
+    alluxio table transformStatus JOB_ID  # show transform status"
+
+    echo "
     presto-cli --execute \"show catalogs\"  # show catalogs"
 
     echo "
@@ -222,7 +235,7 @@ function show_sds_commands() {
     presto-cli --execute \"show tables in catalog_alluxio.hive_compute\"  # show tables"
 
     echo "
-    presto-cli --execute \"select * from catalog_alluxio.hive_compute.students\" # run query"
+    presto-cli --execute \"select * from catalog_alluxio.hive_compute.geo limit 20\" # run query"
 
     echo -e "\n"
 }
