@@ -61,9 +61,12 @@ function prepare_tpcds_data_hdfs() {
 #     hive -f create-table-s3.sql
 # }
 
+share_point=/tmp/nfs-share
+
 function show_nfs_mount() {
     echo "To mount:"
     echo "    sudo mkdir -p /mnt/nfs"
+    echo "    sudo chmod 777 /mnt/nfs"
     echo "    sudo mount -t nfs $(hostname -i):${share_point} /mnt/nfs"
 }
 
