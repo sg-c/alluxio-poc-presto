@@ -86,8 +86,13 @@ function prepare_nfs_server() {
     show_nfs_mount
 }
 
+function show_hdfs_namenodes() {
+    hdfs getconf -namenodes
+}
+
 function prepare_usage() {
-    echo "prepare_tpcds_data"
+    echo "prepare_tpcds_data_hdfs"
     echo "prepare_nfs_server"
     echo "show_nfs_mount"
+    echo "show_hdfs_namenodes"
 }

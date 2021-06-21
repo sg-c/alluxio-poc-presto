@@ -178,11 +178,11 @@ function set_policy_scan_interval() {
     echo "alluxio.policy.scan.interval=$(alluxio getConf alluxio.policy.scan.interval)"
 }
 
-function stop_hdfs_namednoe() {
+function stop_hdfs_namenode() {
     sudo initctl stop hadoop-hdfs-namenode
 }
 
-function start_hdfs_namednoe() {
+function start_hdfs_namenode() {
     sudo initctl start hadoop-hdfs-namenode
 }
 
@@ -287,6 +287,19 @@ function umount_fuse() {
     doas alluxio "/opt/alluxio/integration/fuse/bin/alluxio-fuse umount /mnt/alluxio-fuse"
 }
 
+function show_mount_hdfs() {
+    if [ "$#" -ne 1 ]; then
+        echo "Pass hdfs namenode..."
+        return 1
+    fi
+    
+    echo "alluxio fs mount MOUNT_POINT \"hdfs://${1}:8020/\""
+}
+
+function show_hdfs_namenodes() {
+    hdfs getconf -namenodes
+}
+
 function prepare_usage() {
     echo -e "\n"
 
@@ -300,7 +313,7 @@ function prepare_usage() {
     echo -e "    show_mount_union"
     echo -e "    show_add_policy"
     echo -e "    set_policy_scan_interval"
-    echo -e "    start_hdfs_namednoe"
+    echo -e "    start_hdfs_namenode"
     echo -e "    stop_hdfs_namenode"
     echo -e "\n"
 
@@ -337,5 +350,8 @@ function prepare_usage() {
     echo -e " "
     echo -e "    mount_fuse"
     echo -e "    umount_fuse"
+    echo -e " "
+    echo -e "    show_mount_hdfs"
+    echo -e "    show_hdfs_namenodes"
     echo -e "\n"
 }
