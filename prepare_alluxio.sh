@@ -69,6 +69,27 @@ function disable_transparent_uri_for_presto() {
     fi
 }
 
+function show_enable_transparent_uri_for_spark() {
+    echo "
+    Add to /etc/hadoop/conf/core-site.xml 
+    
+    <property>
+        <name>fs.hdfs.impl</name>
+        <value>alluxio.hadoop.ShimFileSystem</value>
+    </property>
+    <property>
+        <name>fs.AbstractFileSystem.hdfs.impl</name>
+        <value>alluxio.hadoop.AlluxioShimFileSystem</value>
+    </property>
+
+    -------- 
+
+    Add to /opt/alluxio/conf/alluxio-site.properties
+
+    alluxio.user.shimfs.bypass.prefix.list=hdfs://$(show_hdfs_namenodes):8020/user
+    "
+}
+
 function enable_transparent_uri_for_s3() {
     local core_site=/etc/hadoop/conf/core-site.xml
 
@@ -261,7 +282,7 @@ function set_ttl_checker_interval() {
     set_alluxio_property alluxio.master.ttl.checker.interval "$1"
     
     echo "Restart master."
-    alluxio-start.sh master
+    doas alluxio "alluxio-start.sh master"
 
     echo "alluxio.master.ttl.checker.interval=$(alluxio getConf alluxio.master.ttl.checker.interval)"
 }
@@ -292,7 +313,7 @@ function show_mount_hdfs() {
         echo "Pass hdfs namenode..."
         return 1
     fi
-    
+
     echo "alluxio fs mount MOUNT_POINT \"hdfs://${1}:8020/\""
 }
 
@@ -318,10 +339,11 @@ function prepare_usage() {
     echo -e "\n"
 
     echo -e "[Transparent URI Demo]"
-    echo -e "    enable_transparent_uri_for_presto"
-    echo -e "    disable_transparent_uri_for_presto"
+    echo -e "    show_enable_transparent_uri_for_spark"
     echo -e "    enable_transparent_uri_for_s3"
     echo -e "    disable_transparent_uri_for_s3"
+    echo -e "    enable_transparent_uri_for_presto"
+    echo -e "    disable_transparent_uri_for_presto"
     echo -e "\n"
 
     echo -e "[Unified Namespace Demo]"

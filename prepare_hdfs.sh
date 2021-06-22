@@ -93,9 +93,17 @@ function show_hdfs_namenodes() {
     hdfs getconf -namenodes
 }
 
+function show_spark_example_code() {
+    echo "spark.read.parquet(\"hdfs://$(show_hdfs_namenodes):8020/tmp/tpcds/customer\").count"
+}
+
 function prepare_usage() {
-    echo "prepare_tpcds_data_hdfs"
-    echo "prepare_nfs_server"
-    echo "show_nfs_mount"
-    echo "show_hdfs_namenodes"
+    echo -e "Preparation:"
+    echo -e "   prepare_tpcds_data_hdfs"
+    echo -e "   prepare_nfs_server"
+    echo -e ""
+    echo -e "Example Commands:"
+    echo -e "   show_nfs_mount"
+    echo -e "   show_hdfs_namenodes"
+    echo -e "   show_spark_example_code"
 }
