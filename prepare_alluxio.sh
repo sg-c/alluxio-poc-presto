@@ -1,3 +1,22 @@
+function show_worker_reliability() {
+
+    # ssh -i "~/.ssh/wa5oj.pem" centos@ec2-34-229-98-7.compute-1.amazonaws.com
+    # ssh -i "~/.ssh/wa5oj.pem" centos@ec2-54-81-157-114.compute-1.amazonaws.com
+    # ssh -i "~/.ssh/wa5oj.pem" centos@ec2-3-92-78-167.compute-1.amazonaws.com  WORKER-1
+    # ssh -i "~/.ssh/wa5oj.pem" centos@ec2-3-84-73-217.compute-1.amazonaws.com
+    
+    echo "
+
+    head -c 10G </dev/urandom > /tmp/random.10G.touch   # generate a random file of 10G 
+    hadoop fs -put /tmp/random.10G.touch /  # put the file to HDFS, UFS of Alluxio
+    bin/alluxio fs ls -f /  # force load the metadata of random.10G.touch
+    bin/alluxio fs distributedLoad /random.10G.touch # load data of random.10G.touch to alluxio
+    time bin/alluxio fs cat /random.10G.touch | wc -c  # read the file and show the time
+    jps | grep AlluxioWorker ; WORKER_PROC=$(jps | grep AlluxioWorker | awk '{ print $1}')  # find and record the current worker process id
+    time bin/alluxio fs cat /random.10G.touch | wc -c  & sleep 2; kill -9 $WORKER_PROC ; fg %1  # read again
+    "
+}
+
 function doas() {
   if [[ "$#" -ne "2" ]]; then
     echo "Incorrect number of arguments passed into function doas, expecting 2"
@@ -71,7 +90,7 @@ function disable_transparent_uri_for_presto() {
 
 function show_enable_transparent_uri_for_spark() {
     echo "
-    Add to /etc/hadoop/conf/core-site.xml 
+    sudo vim /etc/hadoop/conf/core-site.xml 
     
     <property>
         <name>fs.hdfs.impl</name>
@@ -82,11 +101,12 @@ function show_enable_transparent_uri_for_spark() {
         <value>alluxio.hadoop.AlluxioShimFileSystem</value>
     </property>
 
-    -------- 
+    --------
 
-    Add to /opt/alluxio/conf/alluxio-site.properties
-
-    alluxio.user.shimfs.bypass.prefix.list=hdfs://$(show_hdfs_namenodes):8020/user
+    # restart node manager on worker nodes
+    
+    sudo initctl stop hadoop-yarn-nodemanager
+    sudo initctl start hadoop-yarn-nodemanager
     "
 }
 
@@ -104,7 +124,7 @@ function disable_transparent_uri_for_s3() {
     sed -i "s/alluxio.hadoop.ShimFileSystem/com.amazon.ws.emr.hadoop.fs.EmrFileSystem/" $core_site
 }
 
-function show_mount_s3() {
+function show_mount_s3_tpcds() {
     echo "alluxio fs mount /s3-tpcds s3://alluxio.saiguang.test/tpcds/parquet/scale100/"
 }
 
@@ -319,6 +339,33 @@ function show_mount_hdfs() {
 
 function show_hdfs_namenodes() {
     hdfs getconf -namenodes
+}
+
+function show_journal_backup_test_steps() {
+    echo "alluxio-stop.sh master # stop master"
+    echo "alluxio format # tear down everything"
+    echo "alluxio-start.sh master # start master"
+    echo "alluxio fs mount /hdfs_comp hdfs://$(hdfs getconf -namenodes):8020/ # mount 2nd hdfs"
+    echo "alluxio fs mount # show all mount points"
+    echo "alluxio runTest --directory / # generate files under /"
+    echo "alluxio runTest --directory /hdfs_comp # generate files under /hdfs_comp"
+    echo "alluxio fs ls -R /default_tests_files # show test files under /"
+    echo "alluxio fs ls -R /hdfs_comp/default_tests_files # show test files under /hdfs_comp"
+    echo "alluxio fsadmin backup # back up journal"
+
+    echo "write down the backup URI" # hdfs://ip-44-229-5-53.us-west-2.compute.internal:8020/alluxio_backups/alluxio-backup-2021-06-22-1624370826728.gz
+
+    echo "alluxio-stop.sh master # stop master"
+    echo "alluxio format # tear down everything"
+    echo "alluxio-start.sh master # start master"
+    echo "alluxio fs mount # show all mount points"
+
+    echo "alluxio-stop.sh master # stop master"
+    echo "alluxio format # tear down everything"
+    echo "alluxio-start.sh -i BACKUP_URI master"
+    echo "alluxio fs mount # show all mount points"
+    echo "alluxio fs ls -R /default_tests_files # show test files under /"
+    echo "alluxio fs ls -R /hdfs_comp/default_tests_files # show test files under /hdfs_comp"
 }
 
 function prepare_usage() {
