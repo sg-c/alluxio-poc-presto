@@ -258,7 +258,23 @@ function show_presto() {
 }
 
 function show_transparent_uri() {
+    echo "[enable]"
 
+    echo "sudo cp /etc/hadoop/conf/core-site.xml.transparent_uri /etc/hadoop/conf/core-site.xml"
+    echo "sudo initctl stop hadoop-yarn-nodemanager"
+    echo "sudo initctl start hadoop-yarn-nodemanager"
+
+    echo "alluxio fs mount /s3-tpcds s3://alluxio.saiguang.test/tpcds/parquet/scale100/"
+
+    echo "spark-shell"
+    echo "spark.read.parquet(\"s3://alluxio.saiguang.test/tpcds/parquet/scale100/customer\").count"
+    echo "spark.read.parquet(\"hdfs://ON_PREM_HOST:8020/tmp/tpcds/customer\").count"
+
+    echo "[disable]"
+
+    echo "sudo cp /etc/hadoop/conf/core-site.xml.orig /etc/hadoop/conf/core-site.xml"
+    echo "sudo initctl stop hadoop-yarn-nodemanager"
+    echo "sudo initctl start hadoop-yarn-nodemanager"
 }
 
 function show_ha_master() {
