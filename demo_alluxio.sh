@@ -277,6 +277,7 @@ function show_transparent_uri() {
     echo "sudo initctl start hadoop-yarn-nodemanager"
 }
 
+# TODO: failed to move data with policy
 function show_pddm() {
     if [ "$#" -ne 2 ]; then
         echo "Usage: show_mount_union COMPUTE_DNS ON_PREM_DNS"
@@ -294,10 +295,11 @@ function show_pddm() {
         --option alluxio-union.collection.create=hdfs_comp  \\
         /union_hdfs union://union_hdfs/
     "
+    echo "alluxio fs mount"
     
     echo "### show union ufs access ###"
-    echo "hello on prem hdfs | hadoop fs -put - hdfs://${2}:8020/tmp/foo.on_prem"
-    echo "hello compute hdfs | hadoop fs -put - hdfs://${1}:8020/tmp/foo.compute"
+    echo "echo hello on prem hdfs | hadoop fs -put - hdfs://${2}:8020/tmp/foo.on_prem"
+    echo "echo hello compute hdfs | hadoop fs -put - hdfs://${1}:8020/tmp/foo.compute"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/"
     echo "hadoop fs -ls hdfs://${2}:8020/tmp/"
     echo "hadoop fs -cat hdfs://${1}:8020/tmp/foo.compute"
@@ -310,7 +312,8 @@ function show_pddm() {
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
     echo "alluxio fs policy add /union_hdfs/tmp/tpcds/customer \\
-        \"tpcds_copy:ufsMigrate(olderThan(2s), UFS[hdfs_store]:REMOVE UFS[hdfs_comp]:STORE)\""
+        \"tpcds_copy:ufsMigrate(olderThan(2s), UFS[hdfs_store]:REMOVE, UFS[hdfs_comp]:STORE)\""
+    echo "alluxio fs policy status tpcds_copy"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
     echo "hadoop fs -ls hdfs://${2}:8020/tmp/tpcds/"
     echo "alluxio fs cat /union_hdfs/tmp/tpcds/customer/FILE.parquet | less"
@@ -340,25 +343,27 @@ function show_sds() {
     echo "s3-dist-cp --src s3://alluxio.saiguang.test/geo-data/ --dest /geolocation"
 
     echo "### attach db & query ###"
+    echo "alluxio table ls"
     echo "presto-cli --execute \"show catalogs\"  # show catalogs"
     echo "presto-cli --execute \"show schemas in catalog_alluxio\"  # show schemas"
-    echo "presto-cli --execute \"show tables in catalog_alluxio.hive_compute\"  # show tables"
 
     echo "alluxio table attachdb --db hive_compute hive \\
     thrift://$(alluxio getConf alluxio.master.hostname):9083 default  # attach db to alluxio"
-    echo "alluxio table ls  # list attached db"
 
-    echo "presto-cli --execute \"show catalogs\"  # show catalogs"
+    echo "alluxio table ls  # list attached db"
     echo "presto-cli --execute \"show schemas in catalog_alluxio\"  # show schemas"
     echo "presto-cli --execute \"show tables in catalog_alluxio.hive_compute\"  # show tables"
     echo "presto-cli --execute \"select * from catalog_alluxio.hive_compute.geo limit 20\" # run query"
 
     echo "### transform ###"
+    echo "alluxio fs ls /catalog/hive_compute/tables/geo/  # only hive dir"
     echo "alluxio table transform hive_compute geo  # start transform"
     echo "alluxio table transformStatus JOB_ID  # show transform status"
+    echo "alluxio fs ls /catalog/hive_compute/tables/geo/  # new _internal_ dir"
 
     echo "### detach db ###"
     echo "alluxio table detachdb hive_compute  # detach db from alluxio"
+    echo "alluxio table ls"
 }
 
 function  show_orchestration_hub() {
@@ -370,6 +375,7 @@ function  show_orchestration_hub() {
     echo "open http://${1}:30077"
 }
 
+# TODO: Cannot restore UFS
 function show_backup() {
     if [ "$#" -ne 1 ]; then
         echo "Usage: show_orchestration_hub ON_PREM_DNS"
@@ -377,12 +383,12 @@ function show_backup() {
     fi
 
     echo "### create backup ###"
+    echo "sudo su - alluxio"
     echo "hadoop fs -ls hdfs://${1}:8020/alluxio_backups"
     echo "alluxio fsadmin backup"
     echo "hadoop fs -ls hdfs://${1}:8020/alluxio_backups"
 
     echo "### format journal ###"
-    echo "sudo su - alluxio"
     echo "alluxio fs mount"
     echo "alluxio-stop.sh master"
     echo "alluxio format"
