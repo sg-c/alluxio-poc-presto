@@ -308,6 +308,7 @@ function show_pddm() {
     echo "alluxio fs cat /union_hdfs/tmp/foo.on_prem"
 
     echo "### policy for copy ###"
+    echo "alluxio fs load /union_hdfs/tmp/tpcds/customer"
     echo "alluxio getConf alluxio.policy.scan.interval"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
@@ -316,10 +317,13 @@ function show_pddm() {
     echo "alluxio fs policy status tpcds_copy"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
     echo "hadoop fs -ls hdfs://${2}:8020/tmp/tpcds/"
-    echo "alluxio fs cat /union_hdfs/tmp/tpcds/customer/FILE.parquet | less"
+    echo "alluxio fs cat /union_hdfs/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet | less"
 
     echo "### move back data ###"
-    echo "hadoop fs -cp hdfs://${1}:8020/tmp/customer hdfs://${2}:8020/tmp/customer"
+    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/_SUCCESS hdfs://${2}:8020/tmp/tpcds/customer"
+    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet hdfs://${2}:8020/tmp/tpcds/customer"
+    echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
+    echo "hadoop fs -ls hdfs://${2}:8020/tmp/tpcds/"
 }
 
 function show_sds() {
