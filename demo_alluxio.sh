@@ -322,20 +322,20 @@ function show_pddm() {
 function show_sds() {
     echo "### prepare ###"
     echo "hive -e \\
-        \"CREATE TABLE IF NOT EXISTS default.geo (
-            truckid  string,
-            driverid string,
-            event    string,
-            latitude    double,
-            longtitude  double,
-            city    string,
-            state   string,
-            velocity    int,
-            event_idx   int,
-            idling_idx  int)
-        ROW FORMAT DELIMITED
-        FIELDS TERMINATED BY ','
-        LINES TERMINATED BY '\n'
+        \"CREATE TABLE IF NOT EXISTS default.geo (\\
+            truckid  string,\\
+            driverid string,\\
+            event    string,\\
+            latitude    double,\\
+            longtitude  double,\\
+            city    string,\\
+            state   string,\\
+            velocity    int,\\
+            event_idx   int,\\
+            idling_idx  int)\\
+        ROW FORMAT DELIMITED\\
+        FIELDS TERMINATED BY ','\\
+        LINES TERMINATED BY '\n'\\
         LOCATION 'hdfs:///geolocation';\""
     echo "s3-dist-cp --src s3://alluxio.saiguang.test/geo-data/ --dest /geolocation"
 
