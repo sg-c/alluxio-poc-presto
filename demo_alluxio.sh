@@ -321,7 +321,7 @@ function show_pddm() {
 
 function show_sds() {
     echo "### prepare ###"
-    echo "hive -e 
+    echo "hive -e \\
         \"CREATE TABLE IF NOT EXISTS default.geo (
             truckid  string,
             driverid string,
