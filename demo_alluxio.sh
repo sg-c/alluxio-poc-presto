@@ -465,6 +465,54 @@ function show_job_servce() {
     echo "alluxio fs ls /tmp/tpcds/customer"
 
     echo "### distributedCopy ###"
-    echo "alluxio fs distributedCp /tmp/tpcds/customer /hdfs_comp/tmp/"
+    echo "alluxio fs distributedCp /tmp/tpcds/customer /hdfs_comp/tmp/customer"
     echo "alluxio fs ls /hdfs_comp/tmp"
+    echo "alluxio fs ls /hdfs_comp/tmp/customer"
+
+    echo "### distributedMove ###"
+    echo "alluxio fs distributedMv /hdfs_comp/tmp/customer /hdfs_comp/tmp/customer-new"
+    echo "alluxio fs ls /hdfs_comp/tmp"
+    echo "alluxio fs ls /hdfs_comp/tmp/customer-new"
+
+    echo "### job monitoring ###"
+    echo "alluxio job ls"
+    echo "alluxio job stat JOB_ID"
+}
+
+function show_collect_info() {
+    echo "### prepare ssh to localhost ###"
+    echo "sudo su - hadoop"
+    echo "ssh-keygen"
+    echo "cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys"
+    echo "### collect info for local ###"
+    echo "alluxio collectInfo --local all /tmp/alluxio-diagnose"
+    echo "ls /tmp/alluxio-diagnose"
+    echo "less /tmp/alluxio-diagnose/collectEnv/collectEnv.txt"
+}
+
+# TODO: revisit
+function show_audit() {
+    echo "less /opt/alluxio/logs/master_audit.log"
+}
+
+function show_acl() {
+    echo "### create user bob ###"
+    echo "sudo useradd bob"
+
+    echo "### access only by hadoop ###"
+    echo "sudo su - hadoop"
+    echo "alluxio fs copyFromLocal /tmp/foo /tmp/foo.hadoop"
+    echo "alluxio fs chmod 600 /tmp/foo.hadoop"
+    echo "alluxio fs getfacl /tmp/foo.hadoop"
+    echo "sudo su - bob"
+    echo "alluxio fs cat /tmp/foo.hadoop"
+
+    echo "### update acl for bob ###"
+    echo "sudo su - hadoop"
+    echo "alluxio fs setfacl -m \"user:bob:r-x\" /tmp/foo.hadoop"
+    echo "alluxio fs getfacl /tmp/foo.hadoop"
+
+    echo "### accessible by bob ###"
+    echo "sudo su - bob"
+    echo "alluxio fs cat /tmp/foo.hadoop"
 }
