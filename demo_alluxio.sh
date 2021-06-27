@@ -319,6 +319,7 @@ function show_pddm() {
     echo "alluxio fs cat /union_hdfs/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet | less"
 
     echo "### move back data ###"
+    echo "hadoop fs -mkdir hdfs://${2}:8020/tmp/tpcds/customer"
     echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/_SUCCESS hdfs://${2}:8020/tmp/tpcds/customer/_SUCCESS"
     echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet\\
         hdfs://${2}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet"
