@@ -410,7 +410,7 @@ function show_multiple_medium() {
 
     echo "### check worker path ###"
     echo "ls /mnt/ramdisk/alluxioworker"
-    echo "ls /mnt/alluxio/alluxioworker`"
+    echo "ls /mnt/alluxio/alluxioworker"
 }
 
 function show_ha_master() {
