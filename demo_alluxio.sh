@@ -277,8 +277,144 @@ function show_transparent_uri() {
     echo "sudo initctl start hadoop-yarn-nodemanager"
 }
 
+function show_pddm() {
+    if [ "$#" -ne 2 ]; then
+        echo "Usage: show_mount_union COMPUTE_DNS ON_PREM_DNS"
+        return 1
+    fi
+
+    echo "### mount union ufs ###"
+    echo "
+    alluxio fs mount \\
+        --option alluxio-union.hdfs_store.uri=\"hdfs://${2}:8020/\" \\
+        --option alluxio-union.hdfs_store.option.alluxio.underfs.hdfs.configuration=/etc/hadoop/conf/core-site.xml:/etc/hadoop/conf/hdfs-site.xml \\
+        --option alluxio-union.hdfs_comp.uri=\"hdfs://${1}:8020/\" \\
+        --option alluxio-union.hdfs_comp.option.alluxio.underfs.hdfs.configuration=/etc/hadoop/conf/core-site.xml:/etc/hadoop/conf/hdfs-site.xml \\
+        --option alluxio-union.priority.read=hdfs_comp,hdfs_store \\
+        --option alluxio-union.collection.create=hdfs_comp  \\
+        /union_hdfs union://union_hdfs/
+    "
+    
+    echo "### show union ufs access ###"
+    echo "hello on prem hdfs | hadoop fs -put - hdfs://${2}:8020/tmp/foo.on_prem"
+    echo "hello compute hdfs | hadoop fs -put - hdfs://${1}:8020/tmp/foo.compute"
+    echo "hadoop fs -ls hdfs://${1}:8020/tmp/"
+    echo "hadoop fs -ls hdfs://${2}:8020/tmp/"
+    echo "hadoop fs -cat hdfs://${1}:8020/tmp/foo.compute"
+    echo "hadoop fs -cat hdfs://${2}:8020/tmp/foo.on_prem"
+    echo "alluxio fs cat /union_hdfs/tmp/foo.compute"
+    echo "alluxio fs cat /union_hdfs/tmp/foo.on_prem"
+
+    echo "### policy for copy ###"
+    echo "alluxio getConf alluxio.policy.scan.interval"
+    echo "hadoop fs -ls hdfs://${1}:8020/tmp/"
+    echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
+    echo "alluxio fs policy add /union_hdfs/tmp/tpcds/customer \\
+        \"tpcds_copy:ufsMigrate(olderThan(2s), UFS[hdfs_store]:REMOVE UFS[hdfs_comp]:STORE)\""
+    echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
+    echo "hadoop fs -ls hdfs://${2}:8020/tmp/tpcds/"
+    echo "alluxio fs cat /union_hdfs/tmp/tpcds/customer/FILE.parquet | less"
+
+    echo "### move back data ###"
+    echo "hadoop fs -cp hdfs://${1}:8020/tmp/customer hdfs://${2}:8020/tmp/customer"
+}
+
+function show_sds() {
+    echo "### prepare ###"
+    echo "hive -e 
+        \"CREATE TABLE IF NOT EXISTS default.geo (
+            truckid  string,
+            driverid string,
+            event    string,
+            latitude    double,
+            longtitude  double,
+            city    string,
+            state   string,
+            velocity    int,
+            event_idx   int,
+            idling_idx  int)
+        ROW FORMAT DELIMITED
+        FIELDS TERMINATED BY ','
+        LINES TERMINATED BY '\n'
+        LOCATION 'hdfs:///geolocation';\""
+    echo "s3-dist-cp --src s3://alluxio.saiguang.test/geo-data/ --dest /geolocation"
+
+    echo "### attach db & query ###"
+    echo "presto-cli --execute \"show catalogs\"  # show catalogs"
+    echo "presto-cli --execute \"show schemas in catalog_alluxio\"  # show schemas"
+    echo "presto-cli --execute \"show tables in catalog_alluxio.hive_compute\"  # show tables"
+
+    echo "alluxio table attachdb --db hive_compute hive \\
+    thrift://$(alluxio getConf alluxio.master.hostname):9083 default  # attach db to alluxio"
+    echo "alluxio table ls  # list attached db"
+
+    echo "presto-cli --execute \"show catalogs\"  # show catalogs"
+    echo "presto-cli --execute \"show schemas in catalog_alluxio\"  # show schemas"
+    echo "presto-cli --execute \"show tables in catalog_alluxio.hive_compute\"  # show tables"
+    echo "presto-cli --execute \"select * from catalog_alluxio.hive_compute.geo limit 20\" # run query"
+
+    echo "### transform ###"
+    echo "alluxio table transform hive_compute geo  # start transform"
+    echo "alluxio table transformStatus JOB_ID  # show transform status"
+
+    echo "### detach db ###"
+    echo "alluxio table detachdb hive_compute  # detach db from alluxio"
+}
+
+function  show_orchestration_hub() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: show_orchestration_hub COMPUTE_DNS"
+        return 1
+    fi
+
+    echo "open http://${1}:30077"
+}
+
+function show_backup() {
+    if [ "$#" -ne 1 ]; then
+        echo "Usage: show_orchestration_hub ON_PREM_DNS"
+        return 1
+    fi
+
+    echo "### create backup ###"
+    echo "hadoop fs -ls hdfs://${1}:8020/alluxio_backups"
+    echo "alluxio fsadmin backup"
+    echo "hadoop fs -ls hdfs://${1}:8020/alluxio_backups"
+
+    echo "### format journal ###"
+    echo "sudo su - alluxio"
+    echo "alluxio fs mount"
+    echo "alluxio-stop.sh master"
+    echo "alluxio format"
+    echo "alluxio-start.sh master"
+    echo "alluxio fs mount"
+
+    echo "### restore backup ###"
+    echo "alluxio-stop.sh master"
+    echo "alluxio-start.sh -i hdfs://${1}:8020/alluxio_backups/BACKUP.gz master"
+    echo "alluxio fs mount"
+}
+
+function show_multiple_medium() {
+    echo "### allocator values ###"
+    echo "set alluxio.worker.allocator.class to following values"
+    echo "alluxio.worker.block.allocator.GreedyAllocator"
+    echo "alluxio.worker.block.allocator.MaxFreeAllocator"
+    echo "alluxio.worker.block.allocator.RoundRobinAllocator"
+
+    echo "### restart worker ###"
+    echo "sudo su - alluxio"
+    echo "alluxio-start.sh worker"
+    echo "alluxio fs free /"
+    echo "alluxio fs copyFromLocal /tmp/foo /tmp/medium-test/foo.$(date +%s)"
+
+    echo "### check worker path ###"
+    echo "ls /mnt/ramdisk/alluxioworker"
+    echo "ls /mnt/alluxio/alluxioworker`"
+}
+
 function show_ha_master() {
-    echo "[on master /tmp/alluxio]"
+    echo "[on Alluxio SandBox master /tmp/alluxio]"
 
     echo "bin/alluxio fs masterInfo"
     echo "bin/alluxio runTest"
@@ -292,7 +428,7 @@ function show_ha_master() {
 }
 
 function show_ha_worker() {
-    echo "[on worker /tmp/alluxio]"
+    echo "[on Alluxio SandBox worker /tmp/alluxio]"
 
     echo "head -c 10G </dev/urandom > /tmp/random.10G.touch"
     echo "/tmp/hadoop/bin/hadoop fs -put /tmp/random.10G.touch /alluxio_storage/random.10G.touch"
