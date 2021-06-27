@@ -277,7 +277,6 @@ function show_transparent_uri() {
     echo "sudo initctl start hadoop-yarn-nodemanager"
 }
 
-# TODO: failed to move data with policy
 function show_pddm() {
     if [ "$#" -ne 2 ]; then
         echo "Usage: show_mount_union COMPUTE_DNS ON_PREM_DNS"
@@ -308,7 +307,7 @@ function show_pddm() {
     echo "alluxio fs cat /union_hdfs/tmp/foo.on_prem"
 
     echo "### policy for copy ###"
-    echo "alluxio fs load /union_hdfs/tmp/tpcds/customer"
+    echo "alluxio fs load /union_hdfs/tmp/tpcds/customer"  # TODO: ask about loading
     echo "alluxio getConf alluxio.policy.scan.interval"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
@@ -320,8 +319,9 @@ function show_pddm() {
     echo "alluxio fs cat /union_hdfs/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet | less"
 
     echo "### move back data ###"
-    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/_SUCCESS hdfs://${2}:8020/tmp/tpcds/customer"
-    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet hdfs://${2}:8020/tmp/tpcds/customer"
+    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/_SUCCESS hdfs://${2}:8020/tmp/tpcds/customer/_SUCCESS"
+    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet\\
+        hdfs://${2}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet"
     echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
     echo "hadoop fs -ls hdfs://${2}:8020/tmp/tpcds/"
 }
@@ -455,4 +455,15 @@ function show_ha_worker() {
     echo "alluxio fsadmin report"
     echo "sleep 600"
     echo "time bin/alluxio fs cat /random.10G.touch | wc -c"
+}
+
+function show_job_servce() {
+    echo "### distributedLoad ###"
+    echo "alluxio fs free /"
+    echo "alluxio fs distributedLoad /tmp/tpcds/customer"
+    echo "alluxio fs ls /tmp/tpcds/customer"
+
+    echo "### distributedCopy ###"
+    echo "alluxio fs distributedCp /tmp/tpcds/customer /hdfs_comp/tmp/"
+    echo "alluxio fs ls /hdfs_comp/tmp"
 }
