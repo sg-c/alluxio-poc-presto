@@ -82,7 +82,7 @@ function show_read_hdfs() {
 }
 
 function show_write_hdfs() {
-    echo "hadoop fs -mkdir /tmp/write-test"
+    echo "alluxio fs mkdir /hdfs_comp/tmp/write-test"
     echo "alluxio fs ls /hdfs_comp/tmp/write-test"
 
     echo "alluxio fs -Dalluxio.user.file.writetype.default=MUST_CACHE copyFromLocal /tmp/foo /hdfs_comp/tmp/write-test/foo.must_cache"
