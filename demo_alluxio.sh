@@ -19,37 +19,41 @@ function show_mount_hdfs() {
         return 1
     fi
 
-    echo "alluxio fs mount MOUNT_POINT \"hdfs://${1}:8020/\""
+    echo "alluxio fs mount /hdfs_comp hdfs://${1}:8020/"
 }
 
 function show_commands_hdfs() {
     echo "run \"prepare_tpcds_data_hdfs\" on \"on_prem\" to prepare data"
 
-    echo "alluxio fs checksum   /hdfs_comp/tmp/foo"
     echo "alluxio fs ls         /hdfs_comp/tmp"
+    echo "alluxio fs checksum   /hdfs_comp/tmp/foo"
     echo "alluxio fs mkdir      /hdfs_comp/tmp/test-mkdir"
     echo "alluxio fs ls         /hdfs_comp/tmp"
     echo "alluxio fs chmod 666  /hdfs_comp/tmp/foo"
     echo "alluxio fs ls         /hdfs_comp/tmp"
+    echo "hadoop  fs -ls        /hdfs_comp/tmp"
     echo "alluxio fs chown alluxio:alluxio /hdfs_comp/tmp/foo"
     echo "alluxio fs ls         /hdfs_comp/tmp" 
+    echo "hadoop  fs -ls        /hdfs_comp/tmp"
     echo "alluxio fs du -h      /hdfs_comp/tmp"
     echo "alluxio fs copyFromLocal /tmp/foo /hdfs_comp/tmp/test-mkdir"
     echo "alluxio fs ls         /hdfs_comp/tmp/test-mkdir"
     echo "alluxio fs rm -R      /hdfs_comp/tmp/test-mkdir"
     echo "alluxio fs ls         /hdfs_comp/tmp" 
+    echo "hadoop  fs -ls        /hdfs_comp/tmp"
 }
 
 function show_metadata_sync_hdfs() {
-    echo "hadoop fs -mkdir /tmp/metadata-sync-test"
-
     echo "[active sync]"
-    echo "alluxio fs ls /hdfs_comp/tmp/metadata-sync-test"
+    echo "alluxio fs startSync /hdfs_comp"
     echo "alluxio fs getSyncPathList"
+    echo "hadoop fs -mkdir /tmp/metadata-sync-test"
+    echo "alluxio fs ls /hdfs_comp/tmp/metadata-sync-test"
     echo "hadoop fs -copyFromLocal /tmp/foo /tmp/metadata-sync-test/foo1"
     echo "alluxio fs ls /hdfs_comp/tmp/metadata-sync-test"
 
     echo "[manual sync]"
+    echo "alluxio fs stopSync /hdfs_comp"
     echo "alluxio fs stopSync /"
     echo "alluxio fs getSyncPathList"
     echo "hadoop fs -copyFromLocal /tmp/foo /tmp/metadata-sync-test/foo2"
@@ -63,6 +67,7 @@ function show_metadata_sync_hdfs() {
 
     echo "[turn on active sync]"
     echo "alluxio fs startSync /"
+    echo "alluxio fs startSync /hdfs_comp"
 }
 
 function show_read_hdfs() {
@@ -140,7 +145,7 @@ function show_read_s3() {
     echo "alluxio fs ls /hdfs_comp/tmp/read-test"
 }
 
-function show_write_hdfs() {
+function show_write_s3() {
     echo "alluxio fs mkdir /s3/tmp/write-test"
 
     echo "alluxio fs -Dalluxio.user.file.writetype.default=MUST_CACHE copyFromLocal /tmp/foo /s3/tmp/write-test/foo.must_cache"
