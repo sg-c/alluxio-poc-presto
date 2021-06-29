@@ -102,8 +102,8 @@ function show_mount_s3() {
 }
 
 function show_commands_s3() {
-    echo "alluxio fs checksum   /s3/tmp/foo"
     echo "alluxio fs ls         /s3/tmp"
+    echo "alluxio fs checksum   /s3/tmp/foo"
     echo "alluxio fs mkdir      /s3/tmp/test-mkdir"
     echo "alluxio fs ls         /s3/tmp"
     echo "alluxio fs chmod 666  /s3/tmp/foo"
@@ -133,6 +133,9 @@ function show_metadata_sync_s3() {
     echo "alluxio fsadmin pathConf add --property alluxio.user.file.metadata.sync.interval=5s /s3/tmp/metadata-sync-test"
     echo "aws s3 cp /tmp/foo s3://alluxio.saiguang.test/demo/tmp/metadata-sync-test/foo3"
     echo "alluxio fs ls /s3/tmp/metadata-sync-test"
+
+    echo "[reset]"
+    echo "alluxio fs rm -R /s3/tmp/metadata-sync-test"
 }
 
 function show_read_s3() {
@@ -142,7 +145,10 @@ function show_read_s3() {
     echo "alluxio fs ls /s3/tmp/read-test"
     echo "alluxio fs cat /s3/tmp/read-test/foo.cache"
     echo "alluxio fs -Dalluxio.user.file.readtype.default=NO_CACHE cat /s3/tmp/read-test/foo.no_cache"
-    echo "alluxio fs ls /hdfs_comp/tmp/read-test"
+    echo "alluxio fs ls /s3/tmp/read-test"
+
+    echo "[reset]"
+    echo "alluxio fs rm -R /s3/tmp/read-test"
 }
 
 function show_write_s3() {
@@ -153,12 +159,15 @@ function show_write_s3() {
     echo "alluxio fs -Dalluxio.user.file.writetype.default=ASYNC_THROUGH copyFromLocal /tmp/foo /s3/tmp/write-test/foo.async_through"
     echo "alluxio fs -Dalluxio.user.file.writetype.default=THROUGH copyFromLocal /tmp/foo /s3/tmp/write-test/foo.through"
 
-    echo "alluxio fs ls /hdfs_comp/tmp/write-test"
+    echo "alluxio fs ls /s3/tmp/write-test"
     echo "aws s3 ls s3://alluxio.saiguang.test/demo/tmp/write-test/"
 }
 
 function show_stat_s3() {
     echo "alluxio fs stat /s3/tmp/write-test/foo.must_cache"
+
+    echo "[reset]"
+    echo "alluxio fs rm -R /s3/tmp/write-test"
 }
 
 function setup_fuse() {
@@ -177,7 +186,7 @@ function setup_fuse() {
     sudo chmod 755 /mnt/alluxio-fuse
     sudo chown alluxio /mnt/alluxio-fuse
     
-    alluxio-mount.sh SudoMount local  # sudo mount ramdisk
+    doas alluxio "alluxio-mount.sh SudoMount local"  # sudo mount ramdisk
     doas alluxio "alluxio-start.sh worker"
 }
 
@@ -190,18 +199,22 @@ function show_use_fuse() {
     echo "cp /tmp/foo /mnt/alluxio-fuse/hdfs_comp/tmp/foo.posix"
 
     echo "ls /mnt/alluxio-fuse/s3/tmp/"
+    echo "aws s3 ls s3://alluxio.saiguang.test/demo/tmp/"
     echo "ls /mnt/alluxio-fuse/hdfs_comp/tmp/"
+    echo "hadoop fs -ls /tmp"
 
     echo "cat /mnt/alluxio-fuse/s3/tmp/foo.posix"
-    echo "cat /tmp/foo /mnt/alluxio-fuse/hdfs_comp/tmp/foo.posix"
+    echo "aws s3 cp s3://alluxio.saiguang.test/demo/tmp/foo.posix -"
+    echo "cat /mnt/alluxio-fuse/hdfs_comp/tmp/foo.posix"
+    echo "hadoop fs -cat /tmp/foo.posix"
+
+    echo "rm /mnt/alluxio-fuse/s3/tmp/foo.posix"
+    echo "rm /mnt/alluxio-fuse/hdfs_comp/tmp/foo.posix"
 }
 
 function show_unified_namespace() {
     echo "alluxio fs ls /hdfs_comp/tmp"
     echo "alluxio fs ls /s3/tmp"
-
-    echo "alluxio fs cat /hdfs_comp/tmp/read-test/foo.cache"
-    echo "alluxio fs ls /s3/tmp/read-test/foo.cache"
 }
 
 function show_cache_control() {
@@ -388,7 +401,7 @@ function  show_orchestration_hub() {
 # TODO: Cannot restore UFS
 function show_backup() {
     if [ "$#" -ne 1 ]; then
-        echo "Usage: show_orchestration_hub ON_PREM_DNS"
+        echo "Usage: show_backup ON_PREM_DNS"
         return 1
     fi
 
@@ -407,6 +420,7 @@ function show_backup() {
 
     echo "### restore backup ###"
     echo "alluxio-stop.sh master"
+    echo "alluxio format"
     echo "alluxio-start.sh -i hdfs://${1}:8020/alluxio_backups/BACKUP.gz master"
     echo "alluxio fs mount"
 }
