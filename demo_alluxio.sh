@@ -27,6 +27,7 @@ function show_commands_hdfs() {
 
     echo "alluxio fs ls         /hdfs_comp/tmp"
     echo "alluxio fs checksum   /hdfs_comp/tmp/foo"
+    echo "alluxio fs stat       /hdfs_comp/tmp/foo"
     echo "alluxio fs mkdir      /hdfs_comp/tmp/test-mkdir"
     echo "alluxio fs ls         /hdfs_comp/tmp"
     echo "alluxio fs chmod 666  /hdfs_comp/tmp/foo"
@@ -295,7 +296,7 @@ function show_transparent_uri() {
     echo "sudo initctl start hadoop-yarn-nodemanager"
 }
 
-function show_pddm() {
+function show_pddm_hdfs() {
     if [ "$#" -ne 2 ]; then
         echo "Usage: show_mount_union COMPUTE_DNS ON_PREM_DNS"
         return 1
@@ -345,6 +346,74 @@ function show_pddm() {
     echo "hadoop fs -ls hdfs://${2}:8020/tmp/tpcds/"
 }
 
+function show_pddm_nfs_s3() {
+    echo "### mount union ufs ###"
+    echo "
+    alluxio fs mount \\
+        --option alluxio-union.union_s3.uri=\"s3://alluxio.saiguang.test/demo/\" \\
+        --option alluxio-union.union_nfs.uri=\"/mnt/nfs\" \\
+        --option alluxio-union.priority.read=union_nfs,union_s3 \\
+        --option alluxio-union.collection.create=union_nfs,union_s3  \\
+        /union_nfs_s3 union://nfs_s3/
+    "
+    echo "alluxio fs mount"
+    
+    echo "### show union ufs access ###"
+    echo "echo hi, s3 | aws s3 cp - s3://alluxio.saiguang.test/demo/foo.union_s3"
+    echo "echo hi, s3 | aws s3 cp - s3://alluxio.saiguang.test/demo/foo.union_common"
+    echo "aws s3 cp s3://alluxio.saiguang.test/demo/foo.union_s3 -"
+    echo "echo hi, nfs > /mnt/nfs/foo.union_nfs"
+    echo "echo hi, nfs > /mnt/nfs/foo.union_common"
+    echo "aws s3 ls s3://alluxio.saiguang.test/demo/"
+    echo "ls -ls /mnt/nfs"
+    echo "alluxio fs ls -f /union_nfs_s3 | grep foo"
+
+    echo "### show write to union ufs ###"
+    echo "ls -l /mnt/nfs/foo.write.nfs_only"
+    echo "alluxio fs copyFromLocal /tmp/foo /union_nfs_s3/foo.write.nfs_only"
+    echo "ls -l /mnt/nfs/foo.write.nfs_only"
+    echo "cat /mnt/nfs/foo.write.nfs_only"
+    echo "aws s3 ls s3://alluxio.saiguang.test/demo/foo/foo.write.nfs_only"
+    echo "aws s3 cp s3://alluxio.saiguang.test/demo/foo/foo.write.nfs_only -"
+    echo "# remount union_nfs_s3"
+    echo "alluxio fs copyFromLocal /tmp/foo /union_nfs_s3/foo.write.all"
+    echo "cat /mnt/nfs/foo.write.all"
+    echo "aws s3 cp s3://alluxio.saiguang.test/demo/foo.write.all -"
+
+    echo "### policy for copy ###"
+    echo "alluxio fs rm -R /union_nfs_s3/dir-sync"
+    echo "aws s3 cp /tmp/foo s3://alluxio.saiguang.test/demo/dir-sync/foo1"
+    echo "aws s3 cp /tmp/foo s3://alluxio.saiguang.test/demo/dir-sync/foo2"
+    echo "ls -l /mnt/nfs/dir-sync"
+    echo "alluxio fs ls -f /union_nfs_s3/dir-sync"
+    echo "alluxio fs policy add /union_nfs_s3/dir-sync \\
+        \"copy_data:ufsMigrate(olderThan(2s), UFS[union_nfs]:STORE)\""
+    echo "alluxio fs policy status copy_data"
+    echo "ls -l /mnt/nfs/dir-sync"
+    echo "aws s3 ls s3://alluxio.saiguang.test/demo/dir-sync/"
+
+    echo "alluxio fs mkdir /nfs/dir-sync"
+    echo "alluxio fs copyFromLocal /tmp/foo /nfs/dir-sync/foo1"
+    echo "alluxio fs copyFromLocal /tmp/foo /nfs/dir-sync/foo2"
+    echo "alluxio getConf alluxio.policy.scan.interval"
+    echo "aws s3 ls s3://alluxio.saiguang.test/demo/dir-sync/"
+    echo "ls -l /mnt/nfs/dir-sync/"
+    echo "alluxio fs ls -f /union_nfs_s3/dir-sync"
+    echo "alluxio fs policy add /union_nfs_s3/dir-sync \\
+        \"move_data:ufsMigrate(olderThan(2s), UFS[union_nfs]:REMOVE, UFS[union_s3]:STORE)\""
+    echo "alluxio fs policy status move_data"
+    echo "aws s3 ls s3://alluxio.saiguang.test/demo/dir-sync/"
+    echo "ls -l /mnt/nfs/dir-sync/"
+
+    echo "### move back data ###"
+    echo "hadoop fs -mkdir hdfs://${2}:8020/tmp/tpcds/customer"
+    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/_SUCCESS hdfs://${2}:8020/tmp/tpcds/customer/_SUCCESS"
+    echo "hadoop fs -cp hdfs://${1}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet\\
+        hdfs://${2}:8020/tmp/tpcds/customer/part-00000-2b06809a-b56f-4d3f-a2fc-5cfa09bc7651-c000.snappy.parquet"
+    echo "hadoop fs -ls hdfs://${1}:8020/tmp/tpcds/"
+    echo "hadoop fs -ls hdfs://${2}:8020/tmp/tpcds/"
+}
+
 function show_sds() {
     echo "### prepare ###"
     echo "hive -e \\
@@ -365,24 +434,29 @@ function show_sds() {
         LOCATION 'hdfs:///geolocation';\""
     echo "s3-dist-cp --src s3://alluxio.saiguang.test/geo-data/ --dest /geolocation"
 
-    echo "### attach db & query ###"
+    echo "### attach db ###"
     echo "alluxio table ls"
-    echo "presto-cli --execute \"show catalogs\"  # show catalogs"
-    echo "presto-cli --execute \"show schemas in catalog_alluxio\"  # show schemas"
-
     echo "alluxio table attachdb --db hive_compute hive \\
     thrift://$(alluxio getConf alluxio.master.hostname):9083 default  # attach db to alluxio"
+    echo "alluxio table ls"
+    echo "alluxio table ls hive_compute"
+    echo "hive -e \"show tables;\""
 
-    echo "alluxio table ls  # list attached db"
+    echo "### query ###"
     echo "presto-cli --execute \"show schemas in catalog_alluxio\"  # show schemas"
     echo "presto-cli --execute \"show tables in catalog_alluxio.hive_compute\"  # show tables"
-    echo "presto-cli --execute \"select * from catalog_alluxio.hive_compute.geo limit 20\" # run query"
+    echo "presto-cli --execute \"select * from catalog_alluxio.hive_compute.geo limit 5\" # run query"
+    echo "hive -e \"select * from geo limit 5\""
 
     echo "### transform ###"
+    echo "hadoop fs -ls /geolocation"
     echo "alluxio fs ls /catalog/hive_compute/tables/geo/  # only hive dir"
     echo "alluxio table transform hive_compute geo  # start transform"
     echo "alluxio table transformStatus JOB_ID  # show transform status"
     echo "alluxio fs ls /catalog/hive_compute/tables/geo/  # new _internal_ dir"
+    echo "hadoop fs -rm -r /geolocation  # new _internal_ dir"
+    echo "hive -e \"select * from geo limit 5\""
+    echo "presto-cli --execute \"select * from catalog_alluxio.hive_compute.geo limit 5\" # run query"
 
     echo "### detach db ###"
     echo "alluxio table detachdb hive_compute  # detach db from alluxio"
@@ -484,14 +558,17 @@ function show_job_servce() {
     echo "alluxio fs ls /tmp/tpcds/customer"
 
     echo "### distributedCopy ###"
+    echo "hadoop fs -ls /tmp/customer"
     echo "alluxio fs distributedCp /tmp/tpcds/customer /hdfs_comp/tmp/customer"
     echo "alluxio fs ls /hdfs_comp/tmp"
     echo "alluxio fs ls /hdfs_comp/tmp/customer"
+    echo "hadoop fs -ls /tmp/customer"
 
     echo "### distributedMove ###"
+    echo "hadoop fs -ls /tmp/customer-new"
     echo "alluxio fs distributedMv /hdfs_comp/tmp/customer /hdfs_comp/tmp/customer-new"
     echo "alluxio fs ls /hdfs_comp/tmp"
-    echo "alluxio fs ls /hdfs_comp/tmp/customer-new"
+    echo "hadoop fs -ls /tmp/customer-new"
 
     echo "### job monitoring ###"
     echo "alluxio job ls"
